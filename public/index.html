@@ -561,7 +561,17 @@ body {
 function getWeekStart(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay()); // back to Sunday
+  if (state && state.programStart) {
+    const prog = keyToDate(state.programStart);
+    prog.setHours(0, 0, 0, 0);
+    const daysSince = Math.round((d - prog) / 86400000);
+    const weekNum = Math.floor(daysSince / 7);
+    const start = new Date(prog);
+    start.setDate(prog.getDate() + weekNum * 7);
+    return start;
+  }
+  // fallback before program start is set: Sunday-based
+  d.setDate(d.getDate() - d.getDay());
   return d;
 }
 
@@ -633,6 +643,7 @@ async function initApp() {
     if (!state.programStart) {
       showSetupModal();
     } else {
+      activeKey = currentWeekKey(); // realign to program-start-based week
       renderAll();
     }
   } catch (err) {
