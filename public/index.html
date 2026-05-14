@@ -764,17 +764,43 @@ function skipSetup() {
 
 // ── CYCLE DAYS HELPER ──
 function getCycleDays(key) {
-  const startStr = state.cycleStarts?.[key];
-  const apptStr = state.apptDates?.[key];
+  const startStr = state.cycleStarts?.[key] || getDefaultCycleStart(key);
+  const apptStr  = state.apptDates?.[key]   || getDefaultApptDate(key);
   if (!startStr || !apptStr) return 7;
   const days = Math.round((keyToDate(apptStr) - keyToDate(startStr)) / 86400000);
   return days > 0 ? days : 7;
 }
 
+// Walk backwards to find what this week's cycle start should be:
+// 1. Explicitly set → use it
+// 2. Previous week had an appointment → that date is this week's start
+// 3. programStart falls in this week → use programStart
+// 4. Fall back to Sunday
+function getDefaultCycleStart(key) {
+  if (state.cycleStarts?.[key]) return state.cycleStarts[key];
+  const prevKey = shiftKey(key, -1);
+  if (state.apptDates?.[prevKey]) return state.apptDates[prevKey];
+  const progStart = state.programStart;
+  if (progStart) {
+    const weekSat = (() => { const d = keyToDate(key); d.setDate(d.getDate() + 6); return dateToKey(d); })();
+    if (progStart >= key && progStart <= weekSat) return progStart;
+  }
+  return key; // Sunday fallback
+}
+
+function getDefaultApptDate(key) {
+  if (state.apptDates?.[key]) return state.apptDates[key];
+  const start = getDefaultCycleStart(key);
+  const d = keyToDate(start);
+  d.setDate(d.getDate() + 7);
+  return dateToKey(d);
+}
+
 function updateCycleDate(field, value) {
+  if (!state.cycleStarts) state.cycleStarts = {};
+  if (!state.apptDates) state.apptDates = {};
   if (field === 'start') {
     state.cycleStarts[activeKey] = value;
-    // if no appt date yet, default to start + 7
     if (!state.apptDates[activeKey]) {
       const d = keyToDate(value);
       d.setDate(d.getDate() + 7);
@@ -891,18 +917,9 @@ function renderWeekPanel() {
   });
 
   const wdata = state.weeks[activeKey];
+  const startVal = getDefaultCycleStart(activeKey);
+  const apptVal  = getDefaultApptDate(activeKey);
   const cycleDays = getCycleDays(activeKey);
-
-  // default cycle start: programStart if it falls in this week, else Sunday of this week
-  const weekSunday = activeKey;
-  const weekSat = (() => { const d = keyToDate(activeKey); d.setDate(d.getDate() + 6); return dateToKey(d); })();
-  const progStart = state.programStart;
-  const progStartInThisWeek = progStart && progStart >= weekSunday && progStart <= weekSat;
-  const defaultStart = progStartInThisWeek ? progStart : (progStart && activeKey === dateToKey(getWeekStart(keyToDate(progStart))) ? progStart : weekSunday);
-  const startVal = state.cycleStarts?.[activeKey] || defaultStart;
-
-  const defaultAppt = (() => { const d = keyToDate(startVal); d.setDate(d.getDate() + 7); return dateToKey(d); })();
-  const apptVal = state.apptDates?.[activeKey] || defaultAppt;
   const apptDisplay = (() => { const d = keyToDate(apptVal); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); })();
 
   panel.innerHTML = `
@@ -1194,7 +1211,7 @@ function closeWeek() {
     row.remaining = Math.max(0, carriedNum + addedTotal - dailyDose * getCycleDays(activeKey)).toFixed(2);
   });
 
-  // Carry remaining into next week
+  // Carry remaining amounts into next week
   const nextKey = shiftKey(activeKey, 1);
   if (!state.weeks[nextKey]) state.weeks[nextKey] = [];
   wdata.forEach(row => {
@@ -1206,9 +1223,24 @@ function closeWeek() {
     }
   });
 
+  // Chain appointment date → next week's cycle start
+  const thisAppt = state.apptDates?.[activeKey] || getDefaultApptDate(activeKey);
+  if (thisAppt) {
+    if (!state.cycleStarts) state.cycleStarts = {};
+    if (!state.apptDates) state.apptDates = {};
+    // only set if not already manually configured
+    if (!state.cycleStarts[nextKey]) state.cycleStarts[nextKey] = thisAppt;
+    if (!state.apptDates[nextKey]) {
+      const d = keyToDate(thisAppt);
+      d.setDate(d.getDate() + 7);
+      state.apptDates[nextKey] = dateToKey(d);
+    }
+  }
+
   saveState();
   renderAll();
-  alert(`✓ Week closed. Remaining amounts carried into ${formatWeekRange(nextKey)}.`);
+  const nextApptDisplay = keyToDate(thisAppt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  alert(`✓ Week closed. Remaining carried forward. Next cycle starts ${nextApptDisplay}`);
 }
 
 // ── EXPORT ──
