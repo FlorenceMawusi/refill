@@ -37,23 +37,96 @@ body {
   padding: 0 0 6rem;
 }
 
-/* ── LOGIN ── */
-.login-overlay {
+/* ── LANDING ── */
+.landing {
   position: fixed; inset: 0;
   background: var(--bg);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 100; padding: 1.5rem;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
 }
-.login-card {
-  background: var(--surface);
-  border: 1px solid var(--border2);
-  border-radius: 14px;
-  padding: 2.5rem 2rem;
-  max-width: 380px; width: 100%;
-  text-align: center;
+.landing-inner {
+  max-width: 520px; margin: 0 auto;
+  padding: 3rem 1.5rem 5rem;
+  display: flex; flex-direction: column; align-items: center;
 }
-.login-card h1 { font-family: 'Instrument Serif', serif; font-size: 2.4rem; font-style: italic; margin-bottom: 0.25rem; color: var(--teal); }
-.login-card p { font-size: 0.72rem; color: var(--muted); line-height: 1.7; margin: 0.75rem 0 1.75rem; }
+.landing-logo {
+  font-family: 'Instrument Serif', serif;
+  font-size: 2.8rem; font-style: italic;
+  color: var(--teal); margin-bottom: 0.4rem;
+}
+.landing-tagline {
+  font-size: 0.68rem; color: var(--muted); letter-spacing: 0.1em;
+  text-transform: uppercase; margin-bottom: 2.5rem; text-align: center;
+}
+
+/* quick check card */
+.quick-card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 14px; padding: 2rem 1.75rem;
+  width: 100%; margin-bottom: 1rem;
+}
+.quick-card h2 {
+  font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700;
+  color: var(--text); margin-bottom: 0.3rem;
+}
+.quick-card .qc-sub { font-size: 0.68rem; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
+.qc-fields { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem; }
+.qc-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.qc-field label { font-family: 'Syne', sans-serif; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.qc-row { display: flex; gap: 0.5rem; }
+.qc-input {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+  padding: 0.5rem 0.75rem; outline: none; flex: 1;
+  transition: border-color 0.15s;
+}
+.qc-input:focus { border-color: var(--teal); }
+.qc-select {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+  padding: 0.5rem 0.6rem; outline: none; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.qc-select:focus { border-color: var(--teal); }
+.qc-check-btn {
+  width: 100%; padding: 0.7rem; border-radius: 8px;
+  background: var(--teal); border: none; color: #0e0f14;
+  font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; transition: background 0.15s;
+}
+.qc-check-btn:hover { background: #20c5ae; }
+
+/* result */
+.qc-result {
+  border-radius: 9px; padding: 1rem 1.1rem;
+  margin-top: 1.1rem; display: none;
+}
+.qc-result.ok       { background: var(--green-dim); border: 1px solid rgba(74,222,128,0.2); }
+.qc-result.low      { background: var(--amber-dim); border: 1px solid rgba(251,191,36,0.2); }
+.qc-result.critical { background: var(--red-dim);   border: 1px solid rgba(248,113,113,0.2); }
+.qc-result-title {
+  font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.25rem;
+}
+.qc-result.ok       .qc-result-title { color: var(--green); }
+.qc-result.low      .qc-result-title { color: var(--amber); }
+.qc-result.critical .qc-result-title { color: var(--red); }
+.qc-result-detail { font-size: 0.7rem; color: var(--muted); line-height: 1.6; }
+
+/* sign in CTA */
+.landing-divider {
+  width: 100%; border: none; border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+.landing-cta {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 14px; padding: 1.5rem 1.75rem;
+  width: 100%; text-align: center;
+}
+.landing-cta h3 { font-family: 'Syne', sans-serif; font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
+.landing-cta p { font-size: 0.68rem; color: var(--muted); line-height: 1.7; margin-bottom: 1.25rem; }
 .google-btn {
   display: flex; align-items: center; justify-content: center; gap: 0.6rem;
   width: 100%; padding: 0.75rem 1rem; border-radius: 8px;
@@ -258,6 +331,27 @@ body {
 .si-action.low      { color: var(--amber); }
 .si-action.critical { color: var(--red); }
 
+/* ── CYCLE HEADER ── */
+.cycle-header {
+  display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+  background: var(--surface2); border-radius: 8px;
+  padding: 0.7rem 1rem; margin-bottom: 1rem;
+}
+.cycle-field { display: flex; flex-direction: column; gap: 3px; }
+.cycle-field label { font-family: 'Syne', sans-serif; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.cycle-field input[type=date] {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  padding: 0.3rem 0.5rem; outline: none; transition: border-color 0.15s;
+}
+.cycle-field input[type=date]:focus { border-color: var(--teal); }
+.cycle-days {
+  font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 700;
+  color: var(--teal); background: var(--teal-dim);
+  border: 1px solid rgba(45,212,191,0.2); border-radius: 6px;
+  padding: 0.3rem 0.65rem; white-space: nowrap; align-self: flex-end;
+}
+
 /* ── MISC ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -275,20 +369,67 @@ body {
 </head>
 <body>
 
-<!-- Login -->
-<div class="login-overlay" id="loginOverlay" style="display:none;">
-  <div class="login-card">
-    <h1>Refill</h1>
-    <p>Track your weekly medications and supplements.<br>Sign in to keep your data across all devices.</p>
-    <a href="/auth/google" class="google-btn">
-      <svg width="18" height="18" viewBox="0 0 18 18">
-        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
-        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-        <path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.826.957 4.038l3.007-2.332z"/>
-        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>
-      </svg>
-      Continue with Google
-    </a>
+<!-- Landing (shown when not logged in) -->
+<div class="landing" id="landing">
+  <div class="landing-inner">
+    <div class="landing-logo">Refill</div>
+    <div class="landing-tagline">Medication Refill Tracker</div>
+
+    <div class="quick-card">
+      <h2>Quick Refill Check</h2>
+      <p class="qc-sub">Enter your details below — we'll tell you if you need a refill before your next appointment. No account needed.</p>
+      <div class="qc-fields">
+        <div class="qc-field">
+          <label>Total in bottle / pack</label>
+          <div class="qc-row">
+            <input class="qc-input" type="number" id="qcAmount" min="0" step="any" placeholder="e.g. 30">
+            <select class="qc-select" id="qcUnit">
+              <option value="pills">pills</option>
+              <option value="ml">ml</option>
+              <option value="drops">drops</option>
+            </select>
+          </div>
+        </div>
+        <div class="qc-field">
+          <label>Daily dose</label>
+          <div class="qc-row">
+            <input class="qc-input" type="number" id="qcDose" min="0" step="any" placeholder="e.g. 2">
+            <select class="qc-select" id="qcDoseUnit">
+              <option value="pills">pills/day</option>
+              <option value="ml">ml/day</option>
+              <option value="drops">drops/day</option>
+            </select>
+          </div>
+        </div>
+        <div class="qc-field">
+          <label>Day started</label>
+          <input class="qc-input" type="date" id="qcStart">
+        </div>
+        <div class="qc-field">
+          <label>Next appointment</label>
+          <input class="qc-input" type="date" id="qcAppt">
+        </div>
+      </div>
+      <button class="qc-check-btn" onclick="runQuickCheck()">Check →</button>
+      <div class="qc-result" id="qcResult">
+        <div class="qc-result-title" id="qcResultTitle"></div>
+        <div class="qc-result-detail" id="qcResultDetail"></div>
+      </div>
+    </div>
+
+    <div class="landing-cta">
+      <h3>Track all your medications, every week</h3>
+      <p>Sign in to log multiple medications, track across weeks, get carry-forward calculations, and never lose your history.</p>
+      <a href="/auth/google" class="google-btn">
+        <svg width="18" height="18" viewBox="0 0 18 18">
+          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+          <path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.826.957 4.038l3.007-2.332z"/>
+          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>
+        </svg>
+        Sign in with Google
+      </a>
+    </div>
   </div>
 </div>
 
@@ -409,7 +550,9 @@ function formatYear(key) {
 // ── STATE ──
 let state = {
   meds: [],
-  weeks: {},   // keyed by 'YYYY-MM-DD' (Sunday)
+  weeks: {},        // keyed by 'YYYY-MM-DD' (Sunday)
+  cycleStarts: {},  // { 'YYYY-MM-DD': 'YYYY-MM-DD' }
+  apptDates: {},    // { 'YYYY-MM-DD': 'YYYY-MM-DD' }
   dropsPerMl: 20,
 };
 
@@ -422,14 +565,70 @@ async function initApp() {
   try {
     const res = await fetch('/api/me');
     const data = await res.json();
-    if (!data.user) { document.getElementById('loginOverlay').style.display = 'flex'; return; }
+    if (!data.user) {
+      document.getElementById('landing').style.display = 'block';
+      return;
+    }
     currentUser = data.user;
     renderUserInfo();
     await loadStateFromServer();
     renderAll();
   } catch (err) {
     console.error('Init error:', err);
-    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('landing').style.display = 'block';
+  }
+}
+
+// ── QUICK CHECK ──
+function runQuickCheck() {
+  const amount    = parseFloat(document.getElementById('qcAmount').value);
+  const dose      = parseFloat(document.getElementById('qcDose').value);
+  const unit      = document.getElementById('qcUnit').value;
+  const startStr  = document.getElementById('qcStart').value;
+  const apptStr   = document.getElementById('qcAppt').value;
+  const days      = (startStr && apptStr)
+    ? Math.round((new Date(apptStr) - new Date(startStr)) / 86400000)
+    : 7;
+
+  const result = document.getElementById('qcResult');
+  const title  = document.getElementById('qcResultTitle');
+  const detail = document.getElementById('qcResultDetail');
+
+  if (isNaN(amount) || isNaN(dose) || dose <= 0) {
+    result.className = 'qc-result low';
+    title.textContent = 'Fill in all fields';
+    detail.textContent = 'Enter how much you have and your daily dose.';
+    result.style.display = 'block';
+    return;
+  }
+  if (days <= 0) {
+    result.className = 'qc-result low';
+    title.textContent = 'Check your dates';
+    detail.textContent = 'Appointment date must be after the start date.';
+    result.style.display = 'block';
+    return;
+  }
+
+  const needed    = dose * days;
+  const remaining = amount - needed;
+  const shortage  = Math.ceil(needed - amount);
+
+  result.style.display = 'block';
+
+  const fmt = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
+
+  if (remaining >= 0) {
+    result.className = 'qc-result ok';
+    title.textContent = '✓ You have enough';
+    detail.textContent = `${fmt(amount)} ${unit} on hand · need ${fmt(needed)} ${unit} over ${days} days · ${fmt(remaining)} ${unit} left over after your appointment.`;
+  } else if (amount >= needed * 0.5) {
+    result.className = 'qc-result low';
+    title.textContent = '⚠ Running low';
+    detail.textContent = `You'll be short by ${shortage} ${unit} before your appointment in ${days} days. Consider requesting a partial refill.`;
+  } else {
+    result.className = 'qc-result critical';
+    title.textContent = '⛔ You need a refill';
+    detail.textContent = `You're short by ${shortage} ${unit} for the next ${days} days. Contact your provider as soon as possible.`;
   }
 }
 
@@ -476,6 +675,31 @@ function setSaveStatus(s) {
   const el = document.getElementById('saveStatus');
   el.className = 'save-status' + (s ? ' ' + s : '');
   el.textContent = s === 'saving' ? '● saving…' : s === 'saved' ? '✓ saved' : s === 'error' ? '⚠ save failed' : '';
+}
+
+// ── CYCLE DAYS HELPER ──
+function getCycleDays(key) {
+  const startStr = state.cycleStarts?.[key];
+  const apptStr = state.apptDates?.[key];
+  if (!startStr || !apptStr) return 7;
+  const days = Math.round((keyToDate(apptStr) - keyToDate(startStr)) / 86400000);
+  return days > 0 ? days : 7;
+}
+
+function updateCycleDate(field, value) {
+  if (field === 'start') {
+    state.cycleStarts[activeKey] = value;
+    // if no appt date yet, default to start + 7
+    if (!state.apptDates[activeKey]) {
+      const d = keyToDate(value);
+      d.setDate(d.getDate() + 7);
+      state.apptDates[activeKey] = dateToKey(d);
+    }
+  } else {
+    state.apptDates[activeKey] = value;
+  }
+  saveState();
+  renderWeekPanel();
 }
 
 // ── RENDER ALL ──
@@ -539,7 +763,7 @@ function getWeekStatus(key) {
     const med = state.meds.find(m => m.id === row.medId);
     if (!med || row.remaining === '') return;
     const dailyDose = med.type === 'drops' ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
-    const needed = dailyDose * 7;
+    const needed = dailyDose * getCycleDays(key);
     const rem = parseFloat(row.remaining) || 0;
     if (rem < needed * 0.3) hasCritical = true;
     else if (rem < needed) hasLow = true;
@@ -582,9 +806,24 @@ function renderWeekPanel() {
   });
 
   const wdata = state.weeks[activeKey];
-  const nextKey = shiftKey(activeKey, 1);
+  const cycleDays = getCycleDays(activeKey);
+  const startVal = state.cycleStarts?.[activeKey] || dateToKey(new Date());
+  const defaultAppt = (() => { const d = keyToDate(startVal); d.setDate(d.getDate() + 7); return dateToKey(d); })();
+  const apptVal = state.apptDates?.[activeKey] || defaultAppt;
+  const apptDisplay = (() => { const d = keyToDate(apptVal); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); })();
 
   panel.innerHTML = `
+    <div class="cycle-header">
+      <div class="cycle-field">
+        <label>Cycle started</label>
+        <input type="date" value="${startVal}" onchange="updateCycleDate('start', this.value)">
+      </div>
+      <div class="cycle-field">
+        <label>Next appointment</label>
+        <input type="date" value="${apptVal}" onchange="updateCycleDate('appt', this.value)">
+      </div>
+      <div class="cycle-days">${cycleDays} days</div>
+    </div>
     <div class="med-table-wrap">
       <table class="med-table">
         <thead>
@@ -593,9 +832,9 @@ function renderWeekPanel() {
             <th>Carried In</th>
             <th>Added / Refill</th>
             <th>Daily Dose</th>
-            <th>Est. Used (7d)</th>
+            <th>Est. Used (${cycleDays}d)</th>
             <th>Remaining</th>
-            <th>${formatWeekRange(nextKey)}?</th>
+            <th>By ${apptDisplay}?</th>
             <th></th>
           </tr>
         </thead>
@@ -615,20 +854,20 @@ function renderWeekPanel() {
 
     const isDrops = med.type === 'drops';
     const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
-    const estUsed = (dailyDose * 7).toFixed(1);
+    const estUsed = (dailyDose * cycleDays).toFixed(1);
     const carriedNum = parseFloat(row.carriedIn) || 0;
     const addedTotal = row.bottles.reduce((s, v) => s + (parseFloat(v) || 0), 0);
     const total = carriedNum + addedTotal;
     const remaining = row.remaining !== '' ? parseFloat(row.remaining) : Math.max(0, total - parseFloat(estUsed));
-    const needed7 = dailyDose * 7;
+    const neededN = dailyDose * cycleDays;
     const hasData = row.carriedIn !== '' || row.bottles.some(b => b !== '');
     const unitLabel = isDrops ? 'ml' : (med.unit || 'pills');
 
     let chipClass = 'chip-na', chipText = '—';
     if (hasData) {
-      if (remaining >= needed7)              { chipClass = 'chip-ok';       chipText = '✓ Enough'; }
-      else if (remaining >= needed7 * 0.5)   { chipClass = 'chip-low';      chipText = `⚠ Short ~${Math.ceil(needed7 - remaining)}`; }
-      else                                   { chipClass = 'chip-critical'; chipText = `⛔ Need ${Math.ceil(needed7 - remaining)}`; }
+      if (remaining >= neededN)              { chipClass = 'chip-ok';       chipText = '✓ Enough'; }
+      else if (remaining >= neededN * 0.5)   { chipClass = 'chip-low';      chipText = `⚠ Short ~${Math.ceil(neededN - remaining)}`; }
+      else                                   { chipClass = 'chip-critical'; chipText = `⛔ Need ${Math.ceil(neededN - remaining)}`; }
     }
 
     const bottleInputsHtml = row.bottles.map((val, bi) => `
@@ -736,8 +975,12 @@ function renderSummary() {
   const wdata = state.weeks[activeKey];
   if (!wdata || state.meds.length === 0) { card.style.display = 'none'; return; }
 
-  const nextKey = shiftKey(activeKey, 1);
-  document.getElementById('forecastTitle').textContent = `Forecast · ${formatWeekRange(nextKey)}`;
+  const cycleDays = getCycleDays(activeKey);
+  const apptStr = state.apptDates?.[activeKey];
+  const apptLabel = apptStr
+    ? keyToDate(apptStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : 'next appt';
+  document.getElementById('forecastTitle').textContent = `Forecast · by ${apptLabel}`;
 
   grid.innerHTML = '';
   card.style.display = 'block';
@@ -748,18 +991,18 @@ function renderSummary() {
     if (!row) return;
     const unitLabel = isDrops ? 'ml' : (med.unit || 'pills');
     const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
-    const needed7 = dailyDose * 7;
+    const neededN = dailyDose * cycleDays;
     const carriedNum = parseFloat(row.carriedIn) || 0;
     const addedTotal = (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
     const total = carriedNum + addedTotal;
-    const remaining = row.remaining !== '' ? parseFloat(row.remaining) : Math.max(0, total - dailyDose * 7);
+    const remaining = row.remaining !== '' ? parseFloat(row.remaining) : Math.max(0, total - dailyDose * cycleDays);
     const hasData = row.carriedIn !== '' || addedTotal > 0;
 
     let cls = 'na', action = 'No data yet';
     if (hasData) {
-      if (remaining >= needed7)              { cls = 'ok';       action = `✓ ${remaining.toFixed(1)} ${unitLabel} — good`; }
-      else if (remaining >= needed7 * 0.5)   { cls = 'low';      action = `⚠ Order ~${Math.ceil(needed7 - remaining)} ${unitLabel}`; }
-      else                                   { cls = 'critical'; action = `⛔ Need ${Math.ceil(needed7 - remaining)} ${unitLabel} urgently`; }
+      if (remaining >= neededN)              { cls = 'ok';       action = `✓ ${remaining.toFixed(1)} ${unitLabel} — good`; }
+      else if (remaining >= neededN * 0.5)   { cls = 'low';      action = `⚠ Order ~${Math.ceil(neededN - remaining)} ${unitLabel}`; }
+      else                                   { cls = 'critical'; action = `⛔ Need ${Math.ceil(neededN - remaining)} ${unitLabel} urgently`; }
     }
 
     grid.innerHTML += `
@@ -855,7 +1098,7 @@ function closeWeek() {
     const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
     const carriedNum = parseFloat(row.carriedIn) || 0;
     const addedTotal = (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
-    row.remaining = Math.max(0, carriedNum + addedTotal - dailyDose * 7).toFixed(2);
+    row.remaining = Math.max(0, carriedNum + addedTotal - dailyDose * getCycleDays(activeKey)).toFixed(2);
   });
 
   // Carry remaining into next week
