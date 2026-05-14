@@ -9,6 +9,8 @@ const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const sharp = require('sharp');
 const heicConvert = require('heic-convert');
+const nodemailer = require('nodemailer');
+const cron = require('node-cron');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -241,6 +243,111 @@ Return ONLY a valid JSON array, no explanation, no markdown fences.`;
     console.error('POST /api/parse error:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── REFILL REMINDERS ──
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+});
+
+function toDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function addedTotal(row) {
+  if (row.bottleAmount !== undefined || row.bottleCount !== undefined) {
+    return (parseFloat(row.bottleAmount) || 0) * Math.max(parseFloat(row.bottleCount) || 1, 1);
+  }
+  return (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+}
+
+async function sendRefillReminders() {
+  const target = new Date();
+  target.setDate(target.getDate() + 2);
+  const targetKey = toDateKey(target);
+
+  const { rows } = await pool.query(
+    `SELECT u.email, u.name, ts.state FROM users u JOIN tracker_state ts ON ts.user_id = u.id WHERE u.email IS NOT NULL`
+  );
+
+  for (const { email, name, state } of rows) {
+    if (!state?.apptDates || !state?.meds?.length) continue;
+
+    const weekKey = Object.keys(state.apptDates).find(k => state.apptDates[k] === targetKey);
+    if (!weekKey) continue;
+
+    const wdata = state.weeks?.[weekKey];
+    if (!wdata?.length) continue;
+
+    const dropsPerMl = state.dropsPerMl || 20;
+    const cycleStart = state.cycleStarts?.[weekKey] || weekKey;
+    const cycleDays = Math.max(1, Math.round((new Date(targetKey) - new Date(cycleStart)) / 86400000));
+
+    const results = state.meds.map(med => {
+      const row = wdata.find(r => r.medId === med.id);
+      if (!row) return null;
+      const isDrops = med.type === 'drops';
+      const dailyDose = isDrops ? (med.dropsPerDay / dropsPerMl) : (med.dailyDose || 1);
+      const neededN = dailyDose * cycleDays;
+      const carried = parseFloat(row.carriedIn) || 0;
+      const added = addedTotal(row);
+      const remaining = row.remaining !== '' && row.remaining != null
+        ? parseFloat(row.remaining)
+        : Math.max(0, carried + added - dailyDose * cycleDays);
+      const unit = isDrops ? 'ml' : (med.unit || 'pills');
+      if (remaining < neededN * 0.5) return { name: med.name, status: 'critical', need: Math.ceil(neededN - remaining), unit };
+      if (remaining < neededN)       return { name: med.name, status: 'low',      need: Math.ceil(neededN - remaining), unit };
+      return { name: med.name, status: 'ok', unit };
+    }).filter(Boolean);
+
+    if (results.every(r => r.status === 'ok')) continue;
+
+    const apptDisplay = target.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    const textLines = results.map(r =>
+      r.status === 'critical' ? `⛔ ${r.name} — need ${r.need} more ${r.unit}`
+      : r.status === 'low'    ? `⚠️  ${r.name} — order ~${r.need} more ${r.unit}`
+      :                         `✓  ${r.name} — good`
+    ).join('\n');
+
+    const htmlRows = results.map(r => {
+      const color = r.status === 'critical' ? '#f87171' : r.status === 'low' ? '#fbbf24' : '#4ade80';
+      const icon  = r.status === 'critical' ? '⛔' : r.status === 'low' ? '⚠️' : '✓';
+      const note  = r.status === 'ok' ? 'Good' : `Need ${r.need} more ${r.unit}`;
+      return `<div style="padding:0.75rem;margin-bottom:0.5rem;border-left:3px solid ${color};background:#1e2029;">
+        <span style="color:${color};">${icon} ${r.name}</span>
+        <span style="color:#6b7080;float:right;font-size:0.85rem;">${note}</span>
+      </div>`;
+    }).join('');
+
+    try {
+      await transporter.sendMail({
+        from: `"Refill" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `Refill reminder — appointment in 2 days (${apptDisplay})`,
+        text: `Hi ${name || 'there'},\n\nYour next appointment is on ${apptDisplay}.\n\n${textLines}\n\nOpen Refill → https://refill-production.up.railway.app\n`,
+        html: `<div style="font-family:monospace;max-width:480px;margin:0 auto;background:#0e0f14;color:#e8eaf0;padding:2rem;border-radius:12px;">
+          <h1 style="font-family:Georgia,serif;font-style:italic;color:#2dd4bf;margin:0 0 0.2rem;">Refill</h1>
+          <p style="color:#6b7080;font-size:0.75rem;margin:0 0 1.5rem;">Appointment in 2 days · ${apptDisplay}</p>
+          ${htmlRows}
+          <p style="margin-top:1.5rem;font-size:0.8rem;">
+            <a href="https://refill-production.up.railway.app" style="color:#2dd4bf;text-decoration:none;">Open Refill →</a>
+          </p>
+        </div>`,
+      });
+      console.log(`Refill reminder sent to ${email}`);
+    } catch (err) {
+      console.error(`Failed to send reminder to ${email}:`, err.message);
+    }
+  }
+}
+
+// Run daily at 8am UTC
+cron.schedule('0 8 * * *', () => {
+  sendRefillReminders().catch(err => console.error('Reminder cron error:', err));
 });
 
 // ── START ──
