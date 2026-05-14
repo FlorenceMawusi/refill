@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refill</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0e0f14;
+  --surface: #16181f;
+  --surface2: #1e2029;
+  --border: #2a2d3a;
+  --border2: #363a4a;
+  --text: #e8eaf0;
+  --muted: #6b7080;
+  --dim: #3a3d4a;
+  --teal: #2dd4bf;
+  --teal-dim: rgba(45,212,191,0.12);
+  --amber: #fbbf24;
+  --amber-dim: rgba(251,191,36,0.12);
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.12);
+  --green: #4ade80;
+  --green-dim: rgba(74,222,128,0.1);
+  --blue: #60a5fa;
+  --radius: 10px;
+}
+
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0 0 6rem;
+}
+
+/* ── LOGIN ── */
+.login-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 1.5rem;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 2.5rem 2rem;
+  max-width: 380px; width: 100%;
+  text-align: center;
+}
+.login-card h1 { font-family: 'Instrument Serif', serif; font-size: 2.4rem; font-style: italic; margin-bottom: 0.25rem; color: var(--teal); }
+.login-card p { font-size: 0.72rem; color: var(--muted); line-height: 1.7; margin: 0.75rem 0 1.75rem; }
+.google-btn {
+  display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+  width: 100%; padding: 0.75rem 1rem; border-radius: 8px;
+  border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--text); font-family: 'Syne', sans-serif; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; text-decoration: none; transition: border-color 0.15s, background 0.15s;
+}
+.google-btn:hover { border-color: var(--teal); background: var(--teal-dim); color: var(--teal); }
+
+/* ── HEADER ── */
+.header {
+  background: linear-gradient(135deg, #0e0f14 0%, #141620 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  position: relative; overflow: hidden;
+}
+.header::before {
+  content: ''; position: absolute; top: -60px; right: -60px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(45,212,191,0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+.header-inner { max-width: 1000px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.header h1 { font-family: 'Instrument Serif', serif; font-size: 2rem; font-style: italic; color: var(--teal); line-height: 1; }
+.header-right { display: flex; align-items: center; gap: 1rem; }
+.save-status { font-size: 0.62rem; color: transparent; transition: color 0.3s; }
+.save-status.saving { color: var(--amber); }
+.save-status.saved  { color: var(--green); }
+.save-status.error  { color: var(--red); }
+.user-info { display: flex; align-items: center; gap: 0.6rem; }
+.user-info img { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--border2); }
+.user-info .user-name { font-size: 0.65rem; color: var(--muted); }
+.user-info a { font-size: 0.62rem; color: var(--red); text-decoration: none; opacity: 0.6; }
+.user-info a:hover { opacity: 1; }
+
+/* ── LAYOUT ── */
+.main { max-width: 1000px; margin: 0 auto; padding: 1.75rem 1.5rem; }
+
+/* ── WEEK NAVIGATOR ── */
+.week-nav {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 1rem; flex-wrap: wrap;
+}
+.week-arrow {
+  width: 34px; height: 34px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0;
+}
+.week-arrow:hover { border-color: var(--teal); color: var(--teal); }
+.week-arrow:disabled { opacity: 0.3; cursor: default; }
+.week-display { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.week-range-label {
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; color: var(--text);
+}
+.week-year-label { font-size: 0.7rem; color: var(--muted); }
+.current-badge {
+  background: var(--teal-dim); border: 1px solid rgba(45,212,191,0.25);
+  color: var(--teal); font-size: 0.62rem; padding: 0.2rem 0.6rem;
+  border-radius: 20px; letter-spacing: 0.05em;
+}
+.today-btn {
+  font-family: 'Syne', sans-serif; font-size: 0.65rem; font-weight: 600;
+  padding: 0.3rem 0.75rem; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+}
+.today-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+/* ── HISTORY STRIP ── */
+.history-strip {
+  display: flex; gap: 0.4rem; flex-wrap: nowrap;
+  overflow-x: auto; padding-bottom: 0.25rem;
+  margin-bottom: 1.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dim) transparent;
+}
+.history-strip:empty { display: none; }
+.history-chip {
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+  padding: 0.3rem 0.65rem; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; gap: 0.35rem; white-space: nowrap;
+}
+.history-chip:hover { border-color: var(--border2); color: var(--text); }
+.history-chip.active { border-color: var(--teal); color: var(--teal); background: var(--teal-dim); }
+.history-chip .h-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+.history-chip.ok       .h-dot { background: var(--green); }
+.history-chip.low      .h-dot { background: var(--amber); }
+.history-chip.critical .h-dot { background: var(--red); }
+
+/* ── UPLOAD ZONE ── */
+.upload-section {
+  background: var(--surface); border: 1.5px dashed var(--border2);
+  border-radius: var(--radius); padding: 1.75rem 2rem;
+  text-align: center; margin-bottom: 1.5rem;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer; position: relative;
+}
+.upload-section:hover, .upload-section.drag { border-color: var(--teal); background: var(--teal-dim); }
+.upload-section input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.upload-icon { font-size: 1.75rem; margin-bottom: 0.4rem; }
+.upload-section h3 { font-family: 'Syne', sans-serif; font-size: 0.9rem; color: var(--text); margin-bottom: 0.25rem; }
+.upload-section p { font-size: 0.68rem; color: var(--muted); }
+.upload-status { margin-top: 0.75rem; font-size: 0.72rem; color: var(--teal); display: none; }
+.upload-status.visible { display: block; }
+.upload-status.error { color: var(--red); }
+.ai-loader { display: none; align-items: center; gap: 0.6rem; color: var(--teal); font-size: 0.72rem; margin-top: 0.5rem; justify-content: center; }
+.ai-loader.visible { display: flex; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--teal-dim); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── DROPS CONFIG ── */
+.drops-config {
+  background: var(--teal-dim); border: 1px solid rgba(45,212,191,0.2);
+  border-radius: 7px; padding: 0.6rem 1rem; font-size: 0.7rem; color: var(--teal);
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+}
+.drops-config input {
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(45,212,191,0.3);
+  border-radius: 4px; color: var(--teal); font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem; padding: 0.2rem 0.5rem; width: 55px; outline: none; text-align: center;
+}
+
+/* ── WEEK PANEL ── */
+.week-panel { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform: translateY(0); } }
+
+/* ── MED TABLE ── */
+.med-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; overflow-x: auto; }
+.med-table { width: 100%; border-collapse: collapse; min-width: 620px; }
+.med-table th {
+  background: var(--surface2); font-family: 'Syne', sans-serif; font-size: 0.6rem;
+  font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); padding: 0.75rem; text-align: left;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.med-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.78rem; }
+.med-table tr:last-child td { border-bottom: none; }
+.med-table tr:hover td { background: rgba(255,255,255,0.015); }
+.med-name-cell { font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.med-dose-label { font-size: 0.62rem; color: var(--muted); margin-top: 2px; }
+
+.cell-input {
+  background: var(--surface2); border: 1px solid transparent; border-radius: 5px;
+  color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  padding: 0.3rem 0.5rem; width: 72px; outline: none; transition: border-color 0.15s; text-align: right;
+}
+.cell-input:focus { border-color: var(--teal); }
+.cell-input.narrow { width: 60px; }
+.cell-unit { font-size: 0.58rem; color: var(--muted); margin-top: 2px; }
+
+.added-cell { display: flex; flex-direction: column; gap: 3px; }
+.added-row { display: flex; align-items: center; gap: 4px; }
+.add-bottle-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--muted); font-size: 0.58rem; padding: 2px 6px; cursor: pointer;
+  font-family: 'Syne', sans-serif; transition: all 0.15s; margin-top: 2px; align-self: flex-start;
+}
+.add-bottle-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+.status-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.67rem; padding: 0.22rem 0.55rem; border-radius: 12px; white-space: nowrap; font-weight: 500;
+}
+.chip-ok       { background: var(--green-dim); color: var(--green); }
+.chip-low      { background: var(--amber-dim); color: var(--amber); }
+.chip-critical { background: var(--red-dim);   color: var(--red); }
+.chip-na       { background: rgba(255,255,255,0.04); color: var(--muted); }
+
+/* ── ACTIONS ── */
+.row-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.btn {
+  font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.05em; padding: 0.5rem 1rem; border-radius: 7px;
+  border: none; cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; gap: 0.35rem;
+}
+.btn-primary { background: var(--teal); color: #0e0f14; }
+.btn-primary:hover { background: #20c5ae; }
+.btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.btn-ghost:hover { border-color: var(--teal); color: var(--teal); }
+.btn-danger { background: var(--red-dim); border: 1px solid rgba(248,113,113,0.2); color: var(--red); }
+.btn-danger:hover { background: rgba(248,113,113,0.2); }
+.btn-sm { padding: 0.28rem 0.55rem; font-size: 0.62rem; }
+
+/* ── SUMMARY ── */
+.summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+.summary-card h3 { font-family: 'Syne', sans-serif; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+.summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.6rem; }
+.summary-item { background: var(--surface2); border-radius: 7px; padding: 0.7rem 0.85rem; border-left: 3px solid var(--dim); }
+.summary-item.ok       { border-left-color: var(--green); }
+.summary-item.low      { border-left-color: var(--amber); }
+.summary-item.critical { border-left-color: var(--red); }
+.si-name   { font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 600; color: var(--text); margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-detail { font-size: 0.63rem; color: var(--muted); }
+.si-action { font-size: 0.67rem; margin-top: 0.3rem; font-weight: 500; }
+.si-action.ok       { color: var(--green); }
+.si-action.low      { color: var(--amber); }
+.si-action.critical { color: var(--red); }
+
+/* ── MISC ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 3px; }
+.empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--muted); }
+.empty-state .icon { font-size: 2.2rem; margin-bottom: 0.75rem; }
+.empty-state p { font-size: 0.78rem; line-height: 1.7; }
+
+@media (max-width: 600px) {
+  .header { padding: 1.25rem 1rem; }
+  .main { padding: 1.25rem 1rem; }
+  .header h1 { font-size: 1.6rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-overlay" id="loginOverlay" style="display:none;">
+  <div class="login-card">
+    <h1>Refill</h1>
+    <p>Track your weekly medications and supplements.<br>Sign in to keep your data across all devices.</p>
+    <a href="/auth/google" class="google-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18">
+        <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+        <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+        <path fill="#FBBC05" d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.962H.957C.347 6.175 0 7.55 0 9s.348 2.826.957 4.038l3.007-2.332z"/>
+        <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>
+      </svg>
+      Continue with Google
+    </a>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-inner">
+    <h1>Refill</h1>
+    <div class="header-right">
+      <span class="save-status" id="saveStatus"></span>
+      <div class="user-info" id="userInfo"></div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Week Navigator -->
+  <div class="week-nav">
+    <button class="week-arrow" id="prevWeekBtn" onclick="shiftWeek(-1)" title="Previous week">←</button>
+    <div class="week-display">
+      <span class="week-range-label" id="weekRangeLabel">—</span>
+      <span class="week-year-label" id="weekYearLabel"></span>
+      <span class="current-badge" id="currentBadge" style="display:none;">this week</span>
+    </div>
+    <button class="week-arrow" id="nextWeekBtn" onclick="shiftWeek(1)" title="Next week">→</button>
+    <button class="today-btn" id="todayBtn" onclick="goToCurrentWeek()" style="display:none;">↩ This week</button>
+  </div>
+
+  <!-- History strip -->
+  <div class="history-strip" id="historyStrip"></div>
+
+  <!-- Upload -->
+  <div class="upload-section" id="uploadZone">
+    <input type="file" id="pdfInput" accept=".pdf,image/*" onchange="handleFileUpload(this)">
+    <div class="upload-icon">📋</div>
+    <h3>Upload your prescription PDF</h3>
+    <p>Drop your PDF or image here — Claude will read it and fill in your medications automatically</p>
+    <div class="ai-loader" id="aiLoader">
+      <div class="spinner"></div>
+      <span>Reading your prescription…</span>
+    </div>
+    <div class="upload-status" id="uploadStatus"></div>
+  </div>
+
+  <!-- Drops config -->
+  <div class="drops-config" id="dropsConfig" style="display:none;">
+    💧 Drops conversion:
+    <input type="number" id="dropsPerMl" value="20" min="1" max="50" onchange="recalcAll()">
+    drops per ml
+    <span style="color:var(--muted); font-size:0.63rem;">(check your bottle label — standard is ~20)</span>
+  </div>
+
+  <!-- Week Panel -->
+  <div class="week-panel" id="weekPanel"></div>
+
+  <!-- Actions -->
+  <div class="row-actions" id="rowActions" style="display:none;">
+    <button class="btn btn-ghost" onclick="addMedManually()">+ Add Medication</button>
+    <button class="btn btn-primary" onclick="closeWeek()">✓ Close Week</button>
+    <button class="btn btn-ghost" onclick="exportSummary()">↑ Export</button>
+  </div>
+
+  <!-- Forecast -->
+  <div class="summary-card" id="summaryCard" style="display:none;">
+    <h3 id="forecastTitle">Forecast for next week</h3>
+    <div class="summary-grid" id="summaryGrid"></div>
+  </div>
+
+</div>
+
+<script>
+// ── DATE HELPERS ──
+function getWeekStart(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay()); // back to Sunday
+  return d;
+}
+
+function dateToKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function keyToDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function currentWeekKey() {
+  return dateToKey(getWeekStart(new Date()));
+}
+
+function shiftKey(key, weeks) {
+  const d = keyToDate(key);
+  d.setDate(d.getDate() + weeks * 7);
+  return dateToKey(d);
+}
+
+function formatWeekRange(key) {
+  const start = keyToDate(key);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const s = `${months[start.getMonth()]} ${start.getDate()}`;
+  const e = start.getMonth() === end.getMonth()
+    ? `${end.getDate()}`
+    : `${months[end.getMonth()]} ${end.getDate()}`;
+  return `${s} – ${e}`;
+}
+
+function formatYear(key) {
+  return keyToDate(key).getFullYear();
+}
+
+// ── STATE ──
+let state = {
+  meds: [],
+  weeks: {},   // keyed by 'YYYY-MM-DD' (Sunday)
+  dropsPerMl: 20,
+};
+
+let activeKey = currentWeekKey();
+let saveTimer = null;
+let currentUser = null;
+
+// ── INIT ──
+async function initApp() {
+  try {
+    const res = await fetch('/api/me');
+    const data = await res.json();
+    if (!data.user) { document.getElementById('loginOverlay').style.display = 'flex'; return; }
+    currentUser = data.user;
+    renderUserInfo();
+    await loadStateFromServer();
+    renderAll();
+  } catch (err) {
+    console.error('Init error:', err);
+    document.getElementById('loginOverlay').style.display = 'flex';
+  }
+}
+
+function renderUserInfo() {
+  document.getElementById('userInfo').innerHTML = `
+    ${currentUser.avatar ? `<img src="${currentUser.avatar}" alt="">` : ''}
+    <span class="user-name">${currentUser.name || currentUser.email}</span>
+    <a href="/auth/logout">Sign out</a>
+  `;
+}
+
+// ── SERVER STATE ──
+async function loadStateFromServer() {
+  try {
+    const res = await fetch('/api/state');
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (data && Object.keys(data).length > 0) state = { ...state, ...data };
+  } catch (err) {
+    console.error('Load state error:', err);
+  }
+}
+
+function saveState() {
+  clearTimeout(saveTimer);
+  setSaveStatus('saving');
+  saveTimer = setTimeout(async () => {
+    try {
+      const res = await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state),
+      });
+      if (!res.ok) throw new Error();
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus(''), 2000);
+    } catch {
+      setSaveStatus('error');
+    }
+  }, 1200);
+}
+
+function setSaveStatus(s) {
+  const el = document.getElementById('saveStatus');
+  el.className = 'save-status' + (s ? ' ' + s : '');
+  el.textContent = s === 'saving' ? '● saving…' : s === 'saved' ? '✓ saved' : s === 'error' ? '⚠ save failed' : '';
+}
+
+// ── RENDER ALL ──
+function renderAll() {
+  renderWeekNav();
+  renderHistoryStrip();
+  renderWeekPanel();
+  if (state.meds.some(m => m.type === 'drops')) {
+    document.getElementById('dropsConfig').style.display = 'flex';
+    document.getElementById('dropsPerMl').value = state.dropsPerMl || 20;
+  }
+}
+
+// ── WEEK NAVIGATOR ──
+function renderWeekNav() {
+  const isCurrentWeek = activeKey === currentWeekKey();
+  document.getElementById('weekRangeLabel').textContent = formatWeekRange(activeKey);
+  document.getElementById('weekYearLabel').textContent = formatYear(activeKey);
+  document.getElementById('currentBadge').style.display = isCurrentWeek ? 'inline-flex' : 'none';
+  document.getElementById('todayBtn').style.display = isCurrentWeek ? 'none' : 'inline-flex';
+  // disable next arrow if already one week ahead of current
+  const oneAhead = shiftKey(currentWeekKey(), 1);
+  document.getElementById('nextWeekBtn').disabled = activeKey >= oneAhead;
+}
+
+function shiftWeek(dir) {
+  activeKey = shiftKey(activeKey, dir);
+  renderWeekNav();
+  renderHistoryStrip();
+  renderWeekPanel();
+}
+
+function goToCurrentWeek() {
+  activeKey = currentWeekKey();
+  renderAll();
+}
+
+// ── HISTORY STRIP ──
+function renderHistoryStrip() {
+  const strip = document.getElementById('historyStrip');
+  const weeks = Object.keys(state.weeks)
+    .filter(k => state.weeks[k] && state.weeks[k].length > 0)
+    .sort((a, b) => b.localeCompare(a)); // newest first
+
+  strip.innerHTML = '';
+  weeks.forEach(key => {
+    const status = getWeekStatus(key);
+    const chip = document.createElement('div');
+    chip.className = `history-chip ${status}${key === activeKey ? ' active' : ''}`;
+    chip.innerHTML = `<span class="h-dot"></span>${formatWeekRange(key)}`;
+    chip.onclick = () => { activeKey = key; renderWeekNav(); renderHistoryStrip(); renderWeekPanel(); };
+    strip.appendChild(chip);
+  });
+}
+
+function getWeekStatus(key) {
+  const wdata = state.weeks[key];
+  if (!wdata) return 'ok';
+  let hasCritical = false, hasLow = false;
+  wdata.forEach(row => {
+    const med = state.meds.find(m => m.id === row.medId);
+    if (!med || row.remaining === '') return;
+    const dailyDose = med.type === 'drops' ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
+    const needed = dailyDose * 7;
+    const rem = parseFloat(row.remaining) || 0;
+    if (rem < needed * 0.3) hasCritical = true;
+    else if (rem < needed) hasLow = true;
+  });
+  return hasCritical ? 'critical' : hasLow ? 'low' : 'ok';
+}
+
+// ── WEEK PANEL ──
+function renderWeekPanel() {
+  const panel = document.getElementById('weekPanel');
+  const actions = document.getElementById('rowActions');
+  const summary = document.getElementById('summaryCard');
+
+  if (state.meds.length === 0) {
+    panel.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">💊</div>
+        <p>Upload your prescription PDF above to get started,<br>or add medications manually below.</p>
+      </div>`;
+    actions.style.display = 'flex';
+    summary.style.display = 'none';
+    return;
+  }
+
+  // Init week data if empty
+  if (!state.weeks[activeKey]) {
+    const prevKey = shiftKey(activeKey, -1);
+    state.weeks[activeKey] = state.meds.map(m => ({
+      medId: m.id,
+      carriedIn: getCarryForward(m.id, prevKey) ?? '',
+      bottles: [''],
+      remaining: '',
+      notes: '',
+    }));
+  }
+
+  // Migrate old 'added' field to 'bottles' array
+  state.weeks[activeKey].forEach(row => {
+    if (!row.bottles) { row.bottles = [row.added ?? '']; delete row.added; }
+  });
+
+  const wdata = state.weeks[activeKey];
+  const nextKey = shiftKey(activeKey, 1);
+
+  panel.innerHTML = `
+    <div class="med-table-wrap">
+      <table class="med-table">
+        <thead>
+          <tr>
+            <th>Medication</th>
+            <th>Carried In</th>
+            <th>Added / Refill</th>
+            <th>Daily Dose</th>
+            <th>Est. Used (7d)</th>
+            <th>Remaining</th>
+            <th>${formatWeekRange(nextKey)}?</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="medTableBody"></tbody>
+      </table>
+    </div>
+  `;
+
+  const tbody = document.getElementById('medTableBody');
+  state.meds.forEach(med => {
+    let row = wdata.find(r => r.medId === med.id);
+    if (!row) {
+      row = { medId: med.id, carriedIn: '', bottles: [''], remaining: '', notes: '' };
+      wdata.push(row);
+    }
+    if (!row.bottles) { row.bottles = [row.added ?? '']; delete row.added; }
+
+    const isDrops = med.type === 'drops';
+    const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
+    const estUsed = (dailyDose * 7).toFixed(1);
+    const carriedNum = parseFloat(row.carriedIn) || 0;
+    const addedTotal = row.bottles.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+    const total = carriedNum + addedTotal;
+    const remaining = row.remaining !== '' ? parseFloat(row.remaining) : Math.max(0, total - parseFloat(estUsed));
+    const needed7 = dailyDose * 7;
+    const hasData = row.carriedIn !== '' || row.bottles.some(b => b !== '');
+    const unitLabel = isDrops ? 'ml' : (med.unit || 'pills');
+
+    let chipClass = 'chip-na', chipText = '—';
+    if (hasData) {
+      if (remaining >= needed7)              { chipClass = 'chip-ok';       chipText = '✓ Enough'; }
+      else if (remaining >= needed7 * 0.5)   { chipClass = 'chip-low';      chipText = `⚠ Short ~${Math.ceil(needed7 - remaining)}`; }
+      else                                   { chipClass = 'chip-critical'; chipText = `⛔ Need ${Math.ceil(needed7 - remaining)}`; }
+    }
+
+    const bottleInputsHtml = row.bottles.map((val, bi) => `
+      <div class="added-row">
+        <input class="cell-input narrow" type="number" min="0" step="any"
+          value="${val !== '' ? val : ''}" placeholder="0"
+          onchange="updateBottle('${med.id}', ${bi}, this.value)">
+        ${bi > 0 ? `<button class="btn btn-danger btn-sm" onclick="removeBottle('${med.id}', ${bi})">✕</button>` : ''}
+      </div>
+    `).join('');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div class="med-name-cell">${med.name}</div>
+        <div class="med-dose-label">${med.dose ? med.dose + ' ' + (med.unit||'') + ' · ' : ''}${isDrops ? med.dropsPerDay + ' drops/day' : dailyDose + ' ' + unitLabel + '/day'}</div>
+      </td>
+      <td>
+        <input class="cell-input narrow" type="number" min="0" step="any"
+          value="${row.carriedIn !== '' ? row.carriedIn : ''}" placeholder="—"
+          onchange="updateRow('${med.id}', 'carriedIn', this.value)">
+        <div class="cell-unit">${unitLabel}</div>
+      </td>
+      <td>
+        <div class="added-cell">
+          ${bottleInputsHtml}
+          <button class="add-bottle-btn" onclick="addBottle('${med.id}')">+ bottle</button>
+        </div>
+        <div class="cell-unit">${unitLabel}</div>
+      </td>
+      <td style="color:var(--muted)">${isDrops ? med.dropsPerDay + ' dr' : dailyDose + ' ' + unitLabel}</td>
+      <td style="color:var(--dim)">~${isDrops ? (med.dropsPerDay * 7) : estUsed} ${isDrops ? 'drops' : unitLabel}</td>
+      <td>
+        <input class="cell-input" type="number" min="0" step="any"
+          value="${row.remaining !== '' ? row.remaining : ''}" placeholder="auto"
+          onchange="updateRow('${med.id}', 'remaining', this.value)">
+        <div class="cell-unit">${unitLabel}</div>
+      </td>
+      <td><span class="status-chip ${chipClass}">${chipText}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="removeMed('${med.id}')">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  actions.style.display = 'flex';
+  renderSummary();
+}
+
+function getCarryForward(medId, fromKey) {
+  const wdata = state.weeks[fromKey];
+  if (!wdata) return null;
+  const row = wdata.find(r => r.medId === medId);
+  if (!row || row.remaining === '') return null;
+  return row.remaining;
+}
+
+function updateRow(medId, field, value) {
+  const wdata = state.weeks[activeKey];
+  if (!wdata) return;
+  const row = wdata.find(r => r.medId === medId);
+  if (!row) return;
+  row[field] = value;
+  saveState();
+  renderSummary();
+  renderHistoryStrip();
+}
+
+function updateBottle(medId, idx, value) {
+  const wdata = state.weeks[activeKey];
+  if (!wdata) return;
+  const row = wdata.find(r => r.medId === medId);
+  if (!row) return;
+  row.bottles[idx] = value;
+  saveState();
+  renderSummary();
+  renderHistoryStrip();
+}
+
+function addBottle(medId) {
+  const row = state.weeks[activeKey]?.find(r => r.medId === medId);
+  if (!row) return;
+  row.bottles.push('');
+  saveState();
+  renderWeekPanel();
+}
+
+function removeBottle(medId, idx) {
+  const row = state.weeks[activeKey]?.find(r => r.medId === medId);
+  if (!row || row.bottles.length <= 1) return;
+  row.bottles.splice(idx, 1);
+  saveState();
+  renderWeekPanel();
+}
+
+function recalcAll() {
+  state.dropsPerMl = parseInt(document.getElementById('dropsPerMl').value) || 20;
+  saveState();
+  renderWeekPanel();
+}
+
+// ── SUMMARY / FORECAST ──
+function renderSummary() {
+  const grid = document.getElementById('summaryGrid');
+  const card = document.getElementById('summaryCard');
+  const wdata = state.weeks[activeKey];
+  if (!wdata || state.meds.length === 0) { card.style.display = 'none'; return; }
+
+  const nextKey = shiftKey(activeKey, 1);
+  document.getElementById('forecastTitle').textContent = `Forecast · ${formatWeekRange(nextKey)}`;
+
+  grid.innerHTML = '';
+  card.style.display = 'block';
+
+  state.meds.forEach(med => {
+    const isDrops = med.type === 'drops';
+    const row = wdata.find(r => r.medId === med.id);
+    if (!row) return;
+    const unitLabel = isDrops ? 'ml' : (med.unit || 'pills');
+    const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
+    const needed7 = dailyDose * 7;
+    const carriedNum = parseFloat(row.carriedIn) || 0;
+    const addedTotal = (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+    const total = carriedNum + addedTotal;
+    const remaining = row.remaining !== '' ? parseFloat(row.remaining) : Math.max(0, total - dailyDose * 7);
+    const hasData = row.carriedIn !== '' || addedTotal > 0;
+
+    let cls = 'na', action = 'No data yet';
+    if (hasData) {
+      if (remaining >= needed7)              { cls = 'ok';       action = `✓ ${remaining.toFixed(1)} ${unitLabel} — good`; }
+      else if (remaining >= needed7 * 0.5)   { cls = 'low';      action = `⚠ Order ~${Math.ceil(needed7 - remaining)} ${unitLabel}`; }
+      else                                   { cls = 'critical'; action = `⛔ Need ${Math.ceil(needed7 - remaining)} ${unitLabel} urgently`; }
+    }
+
+    grid.innerHTML += `
+      <div class="summary-item ${cls}">
+        <div class="si-name">${med.name}</div>
+        <div class="si-detail">${med.dose ? med.dose + ' ' + (med.unit||'') + ' · ' : ''}${isDrops ? med.dropsPerDay + ' drops/day' : (med.dailyDose||1) + ' ' + (med.unit||'pills') + '/day'}</div>
+        <div class="si-action ${cls}">${action}</div>
+      </div>
+    `;
+  });
+}
+
+// ── PDF UPLOAD ──
+async function handleFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('uploadStatus');
+  const loader = document.getElementById('aiLoader');
+  status.className = 'upload-status';
+  status.style.display = 'none';
+  loader.classList.add('visible');
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/parse', { method: 'POST', body: formData });
+    const meds = await res.json();
+    if (!res.ok) throw new Error(meds.error || 'Server error');
+    if (!Array.isArray(meds) || meds.length === 0) throw new Error('No medications found');
+
+    meds.forEach(m => {
+      const id = 'med_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      state.meds.push({ id, name: m.name || 'Unknown', dose: m.dose || null, unit: m.unit || 'mg', type: m.type || 'pill', dailyDose: m.dailyDose || 1, dropsPerDay: m.dropsPerDay || 0, totalSupply: m.totalSupply || null });
+    });
+
+    // Pre-fill current week from totalSupply
+    if (!state.weeks[activeKey]) state.weeks[activeKey] = [];
+    state.meds.forEach(med => {
+      if (!state.weeks[activeKey].find(r => r.medId === med.id)) {
+        state.weeks[activeKey].push({ medId: med.id, carriedIn: med.totalSupply != null ? String(med.totalSupply) : '', bottles: [''], remaining: '', notes: '' });
+      }
+    });
+
+    saveState();
+    loader.classList.remove('visible');
+    status.textContent = `✓ Found ${meds.length} medication${meds.length > 1 ? 's' : ''} — review below`;
+    status.className = 'upload-status visible';
+    if (state.meds.some(m => m.type === 'drops')) document.getElementById('dropsConfig').style.display = 'flex';
+    renderAll();
+  } catch (err) {
+    loader.classList.remove('visible');
+    status.textContent = `⚠ ${err.message}. Try adding medications manually.`;
+    status.className = 'upload-status visible error';
+  }
+}
+
+// ── MANUAL ADD ──
+function addMedManually() {
+  const name = prompt('Medication name:');
+  if (!name) return;
+  const dose = prompt('Dose (number only, e.g. 500):', '');
+  const unit = prompt('Unit (mg / mcg / ml / drops / IU):', 'mg');
+  const type = unit === 'drops' ? 'drops' : 'pill';
+  const dailyDose = parseFloat(prompt('How many pills/doses per day?', '1')) || 1;
+  const dropsPerDay = type === 'drops' ? (parseFloat(prompt('Drops per day?', '20')) || 20) : 0;
+  const id = 'med_' + Date.now();
+  state.meds.push({ id, name, dose: parseFloat(dose)||null, unit, type, dailyDose, dropsPerDay, totalSupply: null });
+  if (!state.weeks[activeKey]) state.weeks[activeKey] = [];
+  state.weeks[activeKey].push({ medId: id, carriedIn: '', bottles: [''], remaining: '', notes: '' });
+  saveState();
+  if (state.meds.some(m => m.type === 'drops')) document.getElementById('dropsConfig').style.display = 'flex';
+  renderAll();
+}
+
+function removeMed(id) {
+  if (!confirm('Remove this medication from all weeks?')) return;
+  state.meds = state.meds.filter(m => m.id !== id);
+  Object.keys(state.weeks).forEach(k => { state.weeks[k] = state.weeks[k].filter(r => r.medId !== id); });
+  saveState();
+  renderAll();
+}
+
+// ── CLOSE WEEK → carry forward ──
+function closeWeek() {
+  const wdata = state.weeks[activeKey];
+  if (!wdata) return;
+
+  wdata.forEach(row => {
+    const med = state.meds.find(m => m.id === row.medId);
+    if (!med) return;
+    if (row.remaining !== '') return; // already set manually
+    const isDrops = med.type === 'drops';
+    const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
+    const carriedNum = parseFloat(row.carriedIn) || 0;
+    const addedTotal = (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+    row.remaining = Math.max(0, carriedNum + addedTotal - dailyDose * 7).toFixed(2);
+  });
+
+  // Carry remaining into next week
+  const nextKey = shiftKey(activeKey, 1);
+  if (!state.weeks[nextKey]) state.weeks[nextKey] = [];
+  wdata.forEach(row => {
+    const existing = state.weeks[nextKey].find(r => r.medId === row.medId);
+    if (!existing) {
+      state.weeks[nextKey].push({ medId: row.medId, carriedIn: row.remaining, bottles: [''], remaining: '', notes: '' });
+    } else if (existing.carriedIn === '') {
+      existing.carriedIn = row.remaining;
+    }
+  });
+
+  saveState();
+  renderAll();
+  alert(`✓ Week closed. Remaining amounts carried into ${formatWeekRange(nextKey)}.`);
+}
+
+// ── EXPORT ──
+function exportSummary() {
+  let out = `REFILL — EXPORT\n${'='.repeat(40)}\n\nMedications: ${state.meds.map(m => m.name).join(', ')}\n\n`;
+  Object.keys(state.weeks).sort().forEach(key => {
+    const wdata = state.weeks[key];
+    if (!wdata || !wdata.length) return;
+    out += `${formatWeekRange(key)} ${formatYear(key)}\n${'-'.repeat(30)}\n`;
+    wdata.forEach(row => {
+      const med = state.meds.find(m => m.id === row.medId);
+      if (!med) return;
+      const addedTotal = (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+      out += `  ${med.name}: carried=${row.carriedIn||'?'}, added=${addedTotal||'0'}, remaining=${row.remaining||'?'}\n`;
+    });
+    out += '\n';
+  });
+  const blob = new Blob([out], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'refill-export.txt';
+  a.click();
+}
+
+// ── START ──
+initApp();
+</script>
+</body>
+</html>
