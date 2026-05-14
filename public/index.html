@@ -292,14 +292,10 @@ body {
 .cell-input.narrow { width: 60px; }
 .cell-unit { font-size: 0.58rem; color: var(--muted); margin-top: 2px; }
 
-.added-cell { display: flex; flex-direction: column; gap: 3px; }
-.added-row { display: flex; align-items: center; gap: 4px; }
-.add-bottle-btn {
-  background: none; border: 1px solid var(--border); border-radius: 4px;
-  color: var(--muted); font-size: 0.58rem; padding: 2px 6px; cursor: pointer;
-  font-family: 'Syne', sans-serif; transition: all 0.15s; margin-top: 2px; align-self: flex-start;
-}
-.add-bottle-btn:hover { border-color: var(--teal); color: var(--teal); }
+.added-cell { display: flex; flex-direction: column; gap: 4px; }
+.added-inputs { display: flex; align-items: center; gap: 4px; }
+.added-sep { font-size: 0.65rem; color: var(--muted); }
+.added-total-display { font-size: 0.6rem; color: var(--teal); }
 
 .status-chip {
   display: inline-flex; align-items: center; gap: 0.3rem;
@@ -415,15 +411,19 @@ body {
       <p class="qc-sub">Enter your details below — we'll tell you if you need a refill before your next appointment. No account needed.</p>
       <div class="qc-fields">
         <div class="qc-field">
-          <label>Total in bottle / pack</label>
+          <label>Amount per bottle / pack</label>
           <div class="qc-row">
-            <input class="qc-input" type="number" id="qcAmount" min="0" step="any" placeholder="e.g. 30">
+            <input class="qc-input" type="number" id="qcAmount" min="0" step="any" placeholder="e.g. 60">
             <select class="qc-select" id="qcUnit">
               <option value="pills">pills</option>
               <option value="ml">ml</option>
               <option value="drops">drops</option>
             </select>
           </div>
+        </div>
+        <div class="qc-field">
+          <label>Number of bottles / packs</label>
+          <input class="qc-input" type="number" id="qcBottles" min="1" step="1" placeholder="1" value="1">
         </div>
         <div class="qc-field">
           <label>Daily dose</label>
@@ -643,7 +643,9 @@ async function initApp() {
 
 // ── QUICK CHECK ──
 function runQuickCheck() {
-  const amount    = parseFloat(document.getElementById('qcAmount').value);
+  const perBottle = parseFloat(document.getElementById('qcAmount').value);
+  const bottles   = parseFloat(document.getElementById('qcBottles').value) || 1;
+  const amount    = perBottle * bottles;
   const dose      = parseFloat(document.getElementById('qcDose').value);
   const unit      = document.getElementById('qcUnit').value;
   const startStr  = document.getElementById('qcStart').value;
@@ -679,10 +681,12 @@ function runQuickCheck() {
 
   const fmt = n => Number.isInteger(n) ? String(n) : n.toFixed(1);
 
+  const totalLabel = bottles > 1 ? `${fmt(perBottle)} × ${bottles} bottles = ${fmt(amount)} ${unit}` : `${fmt(amount)} ${unit}`;
+
   if (remaining >= 0) {
     result.className = 'qc-result ok';
     title.textContent = '✓ You have enough';
-    detail.textContent = `${fmt(amount)} ${unit} on hand · need ${fmt(needed)} ${unit} over ${days} days · ${fmt(remaining)} ${unit} left over after your appointment.`;
+    detail.textContent = `${totalLabel} on hand · need ${fmt(needed)} ${unit} over ${days} days · ${fmt(remaining)} ${unit} left over after your appointment.`;
   } else if (amount >= needed * 0.5) {
     result.className = 'qc-result low';
     title.textContent = '⚠ Running low';
@@ -905,16 +909,12 @@ function renderWeekPanel() {
     state.weeks[activeKey] = state.meds.map(m => ({
       medId: m.id,
       carriedIn: getCarryForward(m.id, prevKey) ?? '',
-      bottles: [''],
+      bottleAmount: '',
+      bottleCount: '',
       remaining: '',
       notes: '',
     }));
   }
-
-  // Migrate old 'added' field to 'bottles' array
-  state.weeks[activeKey].forEach(row => {
-    if (!row.bottles) { row.bottles = [row.added ?? '']; delete row.added; }
-  });
 
   const wdata = state.weeks[activeKey];
   const startVal = getDefaultCycleStart(activeKey);
@@ -957,20 +957,32 @@ function renderWeekPanel() {
   state.meds.forEach(med => {
     let row = wdata.find(r => r.medId === med.id);
     if (!row) {
-      row = { medId: med.id, carriedIn: '', bottles: [''], remaining: '', notes: '' };
+      row = { medId: med.id, carriedIn: '', bottleAmount: '', bottleCount: '', remaining: '', notes: '' };
       wdata.push(row);
     }
-    if (!row.bottles) { row.bottles = [row.added ?? '']; delete row.added; }
+    // migrate old formats
+    if (row.bottles) {
+      const t = row.bottles.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+      row.bottleAmount = t > 0 ? String(t) : '';
+      row.bottleCount = '';
+      delete row.bottles;
+    } else if (row.added !== undefined) {
+      row.bottleAmount = row.added ?? '';
+      row.bottleCount = '';
+      delete row.added;
+    }
+    if (row.bottleAmount === undefined) row.bottleAmount = '';
+    if (row.bottleCount === undefined) row.bottleCount = '';
 
     const isDrops = med.type === 'drops';
     const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
     const estUsed = (dailyDose * cycleDays).toFixed(1);
     const carriedNum = parseFloat(row.carriedIn) || 0;
-    const addedTotal = row.bottles.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+    const addedTotal = getAddedTotal(row);
     const total = carriedNum + addedTotal;
     const remaining = row.remaining !== '' ? parseFloat(row.remaining) : Math.max(0, total - parseFloat(estUsed));
     const neededN = dailyDose * cycleDays;
-    const hasData = row.carriedIn !== '' || row.bottles.some(b => b !== '');
+    const hasData = row.carriedIn !== '' || addedTotal > 0;
     const unitLabel = isDrops ? 'ml' : (med.unit || 'pills');
 
     let chipClass = 'chip-na', chipText = '—';
@@ -980,14 +992,9 @@ function renderWeekPanel() {
       else                                   { chipClass = 'chip-critical'; chipText = `⛔ Need ${Math.ceil(neededN - remaining)}`; }
     }
 
-    const bottleInputsHtml = row.bottles.map((val, bi) => `
-      <div class="added-row">
-        <input class="cell-input narrow" type="number" min="0" step="any"
-          value="${val !== '' ? val : ''}" placeholder="0"
-          onchange="updateBottle('${med.id}', ${bi}, this.value)">
-        ${bi > 0 ? `<button class="btn btn-danger btn-sm" onclick="removeBottle('${med.id}', ${bi})">✕</button>` : ''}
-      </div>
-    `).join('');
+    const bottleAmt = parseFloat(row.bottleAmount) || 0;
+    const bottleCnt = parseFloat(row.bottleCount) || 1;
+    const showTotal = bottleAmt > 0 && (parseFloat(row.bottleCount) || 0) > 1;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1003,10 +1010,18 @@ function renderWeekPanel() {
       </td>
       <td>
         <div class="added-cell">
-          ${bottleInputsHtml}
-          <button class="add-bottle-btn" onclick="addBottle('${med.id}')">+ bottle</button>
+          <div class="added-inputs">
+            <input class="cell-input narrow" type="number" min="0" step="any"
+              value="${row.bottleAmount !== '' ? row.bottleAmount : ''}" placeholder="0"
+              onchange="updateBottleAmount('${med.id}', this.value)">
+            <span class="added-sep">×</span>
+            <input class="cell-input" type="number" min="1" step="1" style="width:45px"
+              value="${row.bottleCount !== '' ? row.bottleCount : ''}" placeholder="1"
+              onchange="updateBottleCount('${med.id}', this.value)">
+          </div>
+          ${showTotal ? `<div class="added-total-display">= ${(bottleAmt * bottleCnt).toFixed(1)} ${unitLabel}</div>` : ''}
         </div>
-        <div class="cell-unit">${unitLabel}</div>
+        <div class="cell-unit">${unitLabel}/bottle × bottles</div>
       </td>
       <td style="color:var(--muted)">${isDrops ? med.dropsPerDay + ' dr' : dailyDose + ' ' + unitLabel}</td>
       <td style="color:var(--dim)">~${isDrops ? (med.dropsPerDay * 7) : estUsed} ${isDrops ? 'drops' : unitLabel}</td>
@@ -1045,31 +1060,31 @@ function updateRow(medId, field, value) {
   renderHistoryStrip();
 }
 
-function updateBottle(medId, idx, value) {
-  const wdata = state.weeks[activeKey];
-  if (!wdata) return;
-  const row = wdata.find(r => r.medId === medId);
+function getAddedTotal(row) {
+  if (row.bottleAmount !== undefined || row.bottleCount !== undefined) {
+    return (parseFloat(row.bottleAmount) || 0) * Math.max(parseFloat(row.bottleCount) || 1, 1);
+  }
+  return (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+}
+
+function updateBottleAmount(medId, value) {
+  const row = state.weeks[activeKey]?.find(r => r.medId === medId);
   if (!row) return;
-  row.bottles[idx] = value;
+  row.bottleAmount = value;
+  delete row.bottles;
   saveState();
   renderSummary();
   renderHistoryStrip();
 }
 
-function addBottle(medId) {
+function updateBottleCount(medId, value) {
   const row = state.weeks[activeKey]?.find(r => r.medId === medId);
   if (!row) return;
-  row.bottles.push('');
+  row.bottleCount = value;
+  delete row.bottles;
   saveState();
-  renderWeekPanel();
-}
-
-function removeBottle(medId, idx) {
-  const row = state.weeks[activeKey]?.find(r => r.medId === medId);
-  if (!row || row.bottles.length <= 1) return;
-  row.bottles.splice(idx, 1);
-  saveState();
-  renderWeekPanel();
+  renderSummary();
+  renderHistoryStrip();
 }
 
 function recalcAll() {
@@ -1103,7 +1118,7 @@ function renderSummary() {
     const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
     const neededN = dailyDose * cycleDays;
     const carriedNum = parseFloat(row.carriedIn) || 0;
-    const addedTotal = (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+    const addedTotal = getAddedTotal(row);
     const total = carriedNum + addedTotal;
     const remaining = row.remaining !== '' ? parseFloat(row.remaining) : Math.max(0, total - dailyDose * cycleDays);
     const hasData = row.carriedIn !== '' || addedTotal > 0;
@@ -1152,7 +1167,7 @@ async function handleFileUpload(input) {
     if (!state.weeks[activeKey]) state.weeks[activeKey] = [];
     state.meds.forEach(med => {
       if (!state.weeks[activeKey].find(r => r.medId === med.id)) {
-        state.weeks[activeKey].push({ medId: med.id, carriedIn: med.totalSupply != null ? String(med.totalSupply) : '', bottles: [''], remaining: '', notes: '' });
+        state.weeks[activeKey].push({ medId: med.id, carriedIn: med.totalSupply != null ? String(med.totalSupply) : '', bottleAmount: '', bottleCount: '', remaining: '', notes: '' });
       }
     });
 
@@ -1181,7 +1196,7 @@ function addMedManually() {
   const id = 'med_' + Date.now();
   state.meds.push({ id, name, dose: parseFloat(dose)||null, unit, type, dailyDose, dropsPerDay, totalSupply: null });
   if (!state.weeks[activeKey]) state.weeks[activeKey] = [];
-  state.weeks[activeKey].push({ medId: id, carriedIn: '', bottles: [''], remaining: '', notes: '' });
+  state.weeks[activeKey].push({ medId: id, carriedIn: '', bottleAmount: '', bottleCount: '', remaining: '', notes: '' });
   saveState();
   if (state.meds.some(m => m.type === 'drops')) document.getElementById('dropsConfig').style.display = 'flex';
   renderAll();
@@ -1207,7 +1222,7 @@ function closeWeek() {
     const isDrops = med.type === 'drops';
     const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
     const carriedNum = parseFloat(row.carriedIn) || 0;
-    const addedTotal = (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+    const addedTotal = getAddedTotal(row);
     row.remaining = Math.max(0, carriedNum + addedTotal - dailyDose * getCycleDays(activeKey)).toFixed(2);
   });
 
@@ -1217,7 +1232,7 @@ function closeWeek() {
   wdata.forEach(row => {
     const existing = state.weeks[nextKey].find(r => r.medId === row.medId);
     if (!existing) {
-      state.weeks[nextKey].push({ medId: row.medId, carriedIn: row.remaining, bottles: [''], remaining: '', notes: '' });
+      state.weeks[nextKey].push({ medId: row.medId, carriedIn: row.remaining, bottleAmount: '', bottleCount: '', remaining: '', notes: '' });
     } else if (existing.carriedIn === '') {
       existing.carriedIn = row.remaining;
     }
@@ -1253,7 +1268,7 @@ function exportSummary() {
     wdata.forEach(row => {
       const med = state.meds.find(m => m.id === row.medId);
       if (!med) return;
-      const addedTotal = (row.bottles || []).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+      const addedTotal = getAddedTotal(row);
       out += `  ${med.name}: carried=${row.carriedIn||'?'}, added=${addedTotal||'0'}, remaining=${row.remaining||'?'}\n`;
     });
     out += '\n';
