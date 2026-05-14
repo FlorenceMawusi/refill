@@ -46,9 +46,19 @@ body {
   display: none;
 }
 .landing-inner {
-  max-width: 520px; margin: 0 auto;
+  max-width: 960px; margin: 0 auto;
   padding: 3rem 1.5rem 5rem;
   display: flex; flex-direction: column; align-items: center;
+}
+.landing-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  width: 100%;
+  align-items: start;
+}
+@media (max-width: 680px) {
+  .landing-cards { grid-template-columns: 1fr; }
 }
 .landing-logo {
   font-family: 'Instrument Serif', serif;
@@ -375,6 +385,7 @@ body {
     <div class="landing-logo">Refill</div>
     <div class="landing-tagline">Medication Refill Tracker</div>
 
+    <div class="landing-cards">
     <div class="quick-card">
       <h2>Quick Refill Check</h2>
       <p class="qc-sub">Enter your details below — we'll tell you if you need a refill before your next appointment. No account needed.</p>
@@ -430,6 +441,7 @@ body {
         Sign in with Google
       </a>
     </div>
+    </div><!-- close landing-cards -->
   </div>
 </div>
 
