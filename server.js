@@ -8,6 +8,7 @@ const multer = require('multer');
 const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const sharp = require('sharp');
+const heicConvert = require('heic-convert');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -171,11 +172,18 @@ app.post('/api/parse', requireAuth, upload.single('file'), async (req, res) => {
   let finalMimeType = req.file.mimetype;
 
   if (needsConversion) {
+    const isHeic = req.file.mimetype === 'image/heic' || req.file.mimetype === 'image/heif'
+      || originalName.endsWith('.heic') || originalName.endsWith('.heif');
     try {
-      fileBuffer = await sharp(req.file.buffer).jpeg({ quality: 90 }).toBuffer();
+      if (isHeic) {
+        fileBuffer = await heicConvert({ buffer: req.file.buffer, format: 'JPEG', quality: 0.9 });
+      } else {
+        fileBuffer = await sharp(req.file.buffer).jpeg({ quality: 90 }).toBuffer();
+      }
       finalMimeType = 'image/jpeg';
     } catch (err) {
-      return res.status(422).json({ error: 'Unsupported file format. Please upload a PDF, JPEG, or PNG.' });
+      console.error('Conversion error:', err.message);
+      return res.status(422).json({ error: 'Unsupported file format. Please upload a PDF, JPEG, PNG, or HEIC.' });
     }
   }
 
