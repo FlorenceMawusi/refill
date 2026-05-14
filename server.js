@@ -7,6 +7,7 @@ const { Pool } = require('pg');
 const multer = require('multer');
 const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
+const sharp = require('sharp');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -158,12 +159,31 @@ app.post('/api/state', requireAuth, async (req, res) => {
 app.post('/api/parse', requireAuth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  const base64 = req.file.buffer.toString('base64');
-  const isPdf = req.file.mimetype === 'application/pdf';
+  const originalName = (req.file.originalname || '').toLowerCase();
+  const isPdf = req.file.mimetype === 'application/pdf'
+    || (req.file.mimetype === 'application/octet-stream' && originalName.endsWith('.pdf'))
+    || originalName.endsWith('.pdf');
+
+  const supportedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const needsConversion = !isPdf && !supportedImageTypes.includes(req.file.mimetype);
+
+  let fileBuffer = req.file.buffer;
+  let finalMimeType = req.file.mimetype;
+
+  if (needsConversion) {
+    try {
+      fileBuffer = await sharp(req.file.buffer).jpeg({ quality: 90 }).toBuffer();
+      finalMimeType = 'image/jpeg';
+    } catch (err) {
+      return res.status(422).json({ error: 'Unsupported file format. Please upload a PDF, JPEG, or PNG.' });
+    }
+  }
+
+  const base64 = fileBuffer.toString('base64');
 
   const contentBlock = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
-    : { type: 'image',    source: { type: 'base64', media_type: req.file.mimetype, data: base64 } };
+    : { type: 'image',    source: { type: 'base64', media_type: finalMimeType, data: base64 } };
 
   const prompt = `You are reading a prescription or medication schedule document. Extract ALL medications listed.
 
@@ -188,7 +208,7 @@ Return ONLY a valid JSON array, no explanation, no markdown fences.`;
         'anthropic-beta': 'pdfs-2024-09-25',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1500,
         messages: [{
           role: 'user',
