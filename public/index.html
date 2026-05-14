@@ -903,8 +903,23 @@ function renderWeekPanel() {
   const actions = document.getElementById('rowActions');
   const summary = document.getElementById('summaryCard');
 
+  const startVal0 = getDefaultCycleStart(activeKey);
+  const apptVal0  = getDefaultApptDate(activeKey);
+  const cycleDays0 = getCycleDays(activeKey);
+
   if (state.meds.length === 0) {
     panel.innerHTML = `
+      <div class="cycle-header">
+        <div class="cycle-field">
+          <label>Cycle started</label>
+          <input type="date" value="${startVal0}" onchange="updateCycleDate('start', this.value)">
+        </div>
+        <div class="cycle-field">
+          <label>Next appointment</label>
+          <input type="date" value="${apptVal0}" onchange="updateCycleDate('appt', this.value)">
+        </div>
+        <div class="cycle-days">${cycleDays0} days</div>
+      </div>
       <div class="empty-state">
         <div class="icon">💊</div>
         <p>Upload your prescription PDF above to get started,<br>or add medications manually below.</p>
