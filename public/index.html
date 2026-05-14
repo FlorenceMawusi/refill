@@ -359,7 +359,27 @@ body {
   padding: 0.5rem 0.75rem; outline: none; transition: border-color 0.15s;
 }
 .modal-field input[type=date]:focus { border-color: var(--teal); }
+.modal-field input[type=text],
+.modal-field input[type=number],
+.modal-field select {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+  padding: 0.5rem 0.75rem; outline: none; transition: border-color 0.15s; width: 100%;
+}
+.modal-field input[type=text]:focus,
+.modal-field input[type=number]:focus,
+.modal-field select:focus { border-color: var(--teal); }
+.modal-field select option { background: var(--surface2); }
+.modal-row { display: flex; gap: 0.75rem; }
+.modal-row .modal-field { flex: 1; }
 .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+.btn-icon {
+  background: none; border: 1px solid var(--border); border-radius: 5px;
+  color: var(--muted); font-size: 0.75rem; padding: 3px 7px; cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-icon:hover { border-color: var(--teal); color: var(--teal); }
 
 /* ── CYCLE HEADER ── */
 .cycle-header {
@@ -481,6 +501,49 @@ body {
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="skipSetup()">Skip for now</button>
       <button class="btn btn-primary" onclick="saveSetup()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit medication modal -->
+<div class="modal-overlay" id="editMedModal" style="display:none;">
+  <div class="modal-card">
+    <h2>Edit medication</h2>
+    <div class="modal-field">
+      <label>Name</label>
+      <input type="text" id="editName">
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Dose per pill</label>
+        <input type="number" id="editDose" min="0" step="any" placeholder="e.g. 500">
+      </div>
+      <div class="modal-field">
+        <label>Unit</label>
+        <input type="text" id="editUnit" placeholder="mg / mcg / IU">
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>Pills per day</label>
+        <input type="number" id="editDailyDose" min="1" step="1" placeholder="1">
+      </div>
+      <div class="modal-field">
+        <label>Type</label>
+        <select id="editType" onchange="toggleDropsField()">
+          <option value="pill">Pill / Capsule</option>
+          <option value="drops">Liquid drops</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field" id="editDropsField" style="display:none;">
+      <label>Drops per day</label>
+      <input type="number" id="editDropsPerDay" min="0" step="1" placeholder="0">
+    </div>
+    <input type="hidden" id="editMedId">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditMed()">Save</button>
     </div>
   </div>
 </div>
@@ -1009,7 +1072,8 @@ function renderWeekPanel() {
     const remaining = row.remaining !== '' ? parseFloat(row.remaining) : Math.max(0, total - parseFloat(estUsed));
     const neededN = dailyDose * cycleDays;
     const hasData = row.carriedIn !== '' || addedTotal > 0;
-    const unitLabel = isDrops ? 'ml' : (med.unit || 'pills');
+    const unitLabel = isDrops ? 'ml' : 'pills';
+    const doseUnit = med.unit || 'mg';
 
     let chipClass = 'chip-na', chipText = '—';
     if (hasData) {
@@ -1026,7 +1090,7 @@ function renderWeekPanel() {
     tr.innerHTML = `
       <td>
         <div class="med-name-cell">${med.name}</div>
-        <div class="med-dose-label">${med.dose ? med.dose + ' ' + (med.unit||'') + ' · ' : ''}${isDrops ? med.dropsPerDay + ' drops/day' : dailyDose + ' ' + unitLabel + '/day'}</div>
+        <div class="med-dose-label">${med.dose ? med.dose + ' ' + doseUnit + ' · ' : ''}${isDrops ? med.dropsPerDay + ' drops/day' : dailyDose + ' pill' + (dailyDose !== 1 ? 's' : '') + '/day'}</div>
       </td>
       <td>
         <input class="cell-input narrow" type="number" min="0" step="any"
@@ -1049,8 +1113,8 @@ function renderWeekPanel() {
         </div>
         <div class="cell-unit">${unitLabel}/bottle × bottles</div>
       </td>
-      <td style="color:var(--muted)">${isDrops ? med.dropsPerDay + ' dr' : dailyDose + ' ' + unitLabel}</td>
-      <td style="color:var(--dim)">~${isDrops ? (med.dropsPerDay * 7) : estUsed} ${isDrops ? 'drops' : unitLabel}</td>
+      <td style="color:var(--muted)">${isDrops ? med.dropsPerDay + ' drops' : dailyDose + ' pill' + (dailyDose !== 1 ? 's' : '')}</td>
+      <td style="color:var(--dim)">~${isDrops ? (med.dropsPerDay * cycleDays) : estUsed} ${isDrops ? 'drops' : 'pills'}</td>
       <td>
         <input class="cell-input" type="number" min="0" step="any"
           value="${row.remaining !== '' ? row.remaining : ''}" placeholder="auto"
@@ -1058,7 +1122,10 @@ function renderWeekPanel() {
         <div class="cell-unit">${unitLabel}</div>
       </td>
       <td><span class="status-chip ${chipClass}">${chipText}</span></td>
-      <td><button class="btn btn-danger btn-sm" onclick="removeMed('${med.id}')">✕</button></td>
+      <td style="display:flex;gap:4px;align-items:center;">
+        <button class="btn-icon" onclick="editMed('${med.id}')">✎</button>
+        <button class="btn btn-danger btn-sm" onclick="removeMed('${med.id}')">✕</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -1140,7 +1207,7 @@ function renderSummary() {
     const isDrops = med.type === 'drops';
     const row = wdata.find(r => r.medId === med.id);
     if (!row) return;
-    const unitLabel = isDrops ? 'ml' : (med.unit || 'pills');
+    const unitLabel = isDrops ? 'ml' : 'pills';
     const dailyDose = isDrops ? (med.dropsPerDay / (state.dropsPerMl || 20)) : (med.dailyDose || 1);
     const neededN = dailyDose * cycleDays;
     const carriedNum = parseFloat(row.carriedIn) || 0;
@@ -1304,6 +1371,45 @@ function exportSummary() {
   a.href = URL.createObjectURL(blob);
   a.download = 'refill-export.txt';
   a.click();
+}
+
+// ── EDIT MEDICATION ──
+function editMed(medId) {
+  const med = state.meds.find(m => m.id === medId);
+  if (!med) return;
+  document.getElementById('editMedId').value = medId;
+  document.getElementById('editName').value = med.name || '';
+  document.getElementById('editDose').value = med.dose ?? '';
+  document.getElementById('editUnit').value = med.unit || 'mg';
+  document.getElementById('editDailyDose').value = med.dailyDose || 1;
+  document.getElementById('editType').value = med.type || 'pill';
+  document.getElementById('editDropsPerDay').value = med.dropsPerDay || 0;
+  toggleDropsField();
+  document.getElementById('editMedModal').style.display = 'flex';
+}
+
+function toggleDropsField() {
+  const isDrops = document.getElementById('editType').value === 'drops';
+  document.getElementById('editDropsField').style.display = isDrops ? 'block' : 'none';
+}
+
+function closeEditModal() {
+  document.getElementById('editMedModal').style.display = 'none';
+}
+
+function saveEditMed() {
+  const medId = document.getElementById('editMedId').value;
+  const med = state.meds.find(m => m.id === medId);
+  if (!med) return;
+  med.name       = document.getElementById('editName').value.trim() || med.name;
+  med.dose       = parseFloat(document.getElementById('editDose').value) || null;
+  med.unit       = document.getElementById('editUnit').value.trim() || 'mg';
+  med.dailyDose  = parseFloat(document.getElementById('editDailyDose').value) || 1;
+  med.type       = document.getElementById('editType').value;
+  med.dropsPerDay = parseFloat(document.getElementById('editDropsPerDay').value) || 0;
+  closeEditModal();
+  saveState();
+  renderAll();
 }
 
 // ── START ──
