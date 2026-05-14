@@ -508,7 +508,7 @@ body {
 <!-- Edit medication modal -->
 <div class="modal-overlay" id="editMedModal" style="display:none;">
   <div class="modal-card">
-    <h2>Edit medication</h2>
+    <h2 id="editMedTitle">Edit medication</h2>
     <div class="modal-field">
       <label>Name</label>
       <input type="text" id="editName">
@@ -1279,20 +1279,16 @@ async function handleFileUpload(input) {
 
 // ── MANUAL ADD ──
 function addMedManually() {
-  const name = prompt('Medication name:');
-  if (!name) return;
-  const dose = prompt('Dose (number only, e.g. 500):', '');
-  const unit = prompt('Unit (mg / mcg / ml / drops / IU):', 'mg');
-  const type = unit === 'drops' ? 'drops' : 'pill';
-  const dailyDose = parseFloat(prompt('How many pills/doses per day?', '1')) || 1;
-  const dropsPerDay = type === 'drops' ? (parseFloat(prompt('Drops per day?', '20')) || 20) : 0;
-  const id = 'med_' + Date.now();
-  state.meds.push({ id, name, dose: parseFloat(dose)||null, unit, type, dailyDose, dropsPerDay, totalSupply: null });
-  if (!state.weeks[activeKey]) state.weeks[activeKey] = [];
-  state.weeks[activeKey].push({ medId: id, carriedIn: '', bottleAmount: '', bottleCount: '', remaining: '', notes: '' });
-  saveState();
-  if (state.meds.some(m => m.type === 'drops')) document.getElementById('dropsConfig').style.display = 'flex';
-  renderAll();
+  document.getElementById('editMedTitle').textContent = 'Add medication';
+  document.getElementById('editMedId').value = '';
+  document.getElementById('editName').value = '';
+  document.getElementById('editDose').value = '';
+  document.getElementById('editUnit').value = 'mg';
+  document.getElementById('editDailyDose').value = '1';
+  document.getElementById('editType').value = 'pill';
+  document.getElementById('editDropsPerDay').value = '';
+  toggleDropsField();
+  document.getElementById('editMedModal').style.display = 'flex';
 }
 
 function removeMed(id) {
@@ -1377,6 +1373,7 @@ function exportSummary() {
 function editMed(medId) {
   const med = state.meds.find(m => m.id === medId);
   if (!med) return;
+  document.getElementById('editMedTitle').textContent = 'Edit medication';
   document.getElementById('editMedId').value = medId;
   document.getElementById('editName').value = med.name || '';
   document.getElementById('editDose').value = med.dose ?? '';
@@ -1399,15 +1396,32 @@ function closeEditModal() {
 
 function saveEditMed() {
   const medId = document.getElementById('editMedId').value;
-  const med = state.meds.find(m => m.id === medId);
-  if (!med) return;
-  med.name       = document.getElementById('editName').value.trim() || med.name;
-  med.dose       = parseFloat(document.getElementById('editDose').value) || null;
-  med.unit       = document.getElementById('editUnit').value.trim() || 'mg';
-  med.dailyDose  = parseFloat(document.getElementById('editDailyDose').value) || 1;
-  med.type       = document.getElementById('editType').value;
-  med.dropsPerDay = parseFloat(document.getElementById('editDropsPerDay').value) || 0;
+  const name = document.getElementById('editName').value.trim();
+  if (!name) return;
+  const fields = {
+    name,
+    dose:        parseFloat(document.getElementById('editDose').value) || null,
+    unit:        document.getElementById('editUnit').value.trim() || 'mg',
+    dailyDose:   parseFloat(document.getElementById('editDailyDose').value) || 1,
+    type:        document.getElementById('editType').value,
+    dropsPerDay: parseFloat(document.getElementById('editDropsPerDay').value) || 0,
+  };
+
+  if (medId) {
+    // editing existing
+    const med = state.meds.find(m => m.id === medId);
+    if (!med) return;
+    Object.assign(med, fields);
+  } else {
+    // adding new
+    const id = 'med_' + Date.now();
+    state.meds.push({ id, totalSupply: null, ...fields });
+    if (!state.weeks[activeKey]) state.weeks[activeKey] = [];
+    state.weeks[activeKey].push({ medId: id, carriedIn: '', bottleAmount: '', bottleCount: '', remaining: '', notes: '' });
+  }
+
   closeEditModal();
+  if (state.meds.some(m => m.type === 'drops')) document.getElementById('dropsConfig').style.display = 'flex';
   saveState();
   renderAll();
 }
