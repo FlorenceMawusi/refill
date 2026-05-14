@@ -9,6 +9,7 @@ const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 
 const app = express();
+app.set('trust proxy', 1);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 // ── DATABASE ──
@@ -44,9 +45,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    secure: true,
+    sameSite: 'lax',
+    httpOnly: true,
   },
 }));
 
